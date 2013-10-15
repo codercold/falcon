@@ -578,6 +578,8 @@ int falcon_tick() {
 	int i;
 	char *monitorpath;
 	char *monitorfiletype;
+	char *expath;
+	char * excpaths[128]={0};
 	// TODO:
 
 	parse_config_file("../src/conf/global.conf");
@@ -585,7 +587,19 @@ int falcon_tick() {
 	strcpy(monitorpath, get_config_var("monitorpath"));
 	monitorfiletype = (char *) malloc(sizeof(char) * 1024);
 	strcpy(monitorfiletype, get_config_var("monitorfiletype"));
-
+	expath = (char *) malloc(sizeof(char) * 1024);
+	strcpy(expath, get_config_var("excludepath"));
+	printf("%s\n",expath);
+	char *p = strtok(expath,";");
+	i=0;
+	while(p)
+	{	
+	excpaths[i]=(char *) malloc(sizeof(char) * 1024);
+	strncpy(excpaths[i],p,strlen(p));
+	printf("%s\n",excpaths[i]);
+	p = strtok(NULL,";"); 
+	i++;
+	}
 	//keyword
 	php_keyword_num = parse_config_file("../src/conf/phpkeywords.conf");
 
@@ -608,7 +622,7 @@ int falcon_tick() {
 	// initialize and watch the entire directory tree from the current working
 	// directory downwards for all events
 	if (!inotifytools_initialize()
-			|| !inotifytools_watch_recursively(monitorpath, IN_ALL_EVENTS)) {
+			|| !inotifytools_watch_recursively_with_exclude(monitorpath, IN_ALL_EVENTS,excpaths)) {
 		fprintf(stderr, "%s\n", strerror(inotifytools_error()));
 		return -1;
 	}
