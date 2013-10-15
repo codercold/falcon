@@ -589,14 +589,14 @@ int falcon_tick() {
 	strcpy(monitorfiletype, get_config_var("monitorfiletype"));
 	expath = (char *) malloc(sizeof(char) * 1024);
 	strcpy(expath, get_config_var("excludepath"));
-	printf("%s\n",expath);
+	//printf("%s\n",expath);
 	char *p = strtok(expath,";");
 	i=0;
 	while(p)
 	{	
 	excpaths[i]=(char *) malloc(sizeof(char) * 1024);
 	strncpy(excpaths[i],p,strlen(p));
-	printf("%s\n",excpaths[i]);
+	// printf("%s\n",excpaths[i]);
 	p = strtok(NULL,";"); 
 	i++;
 	}
