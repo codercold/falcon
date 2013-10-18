@@ -317,10 +317,9 @@ int virusHandler(struct inotify_event *event,
 	if (access(fullPathTemp, F_OK) == 0) {
 		if (event->mask & IN_CREATE) {
 			if (event->mask & IN_ISDIR) {
-				inotifytools_watch_recursively(fullPathTemp, IN_ALL_EVENTS);
+//				inotifytools_watch_recursively(fullPathTemp, IN_ALL_EVENTS);
 			} else {
-				tmpkeywords = findViruses(phpVirusfeature, php_virus_num,
-						fullPathTemp);
+				tmpkeywords = findViruses(phpVirusfeature, php_virus_num, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
 //						inotifytools_printf(event, "%T %w%f %e\t ");
@@ -368,8 +367,7 @@ int virusHandler(struct inotify_event *event,
 			if (event->mask & IN_ISDIR) {
 
 			} else {
-				tmpkeywords = findViruses(phpVirusfeature, php_virus_num,
-						fullPathTemp);
+				tmpkeywords = findViruses(phpVirusfeature, php_virus_num, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
 //						inotifytools_printf(event, "%T %w%f %e\t modify ");
@@ -415,7 +413,7 @@ int virusHandler(struct inotify_event *event,
 }
 
 /*find all keywords in the file*/
-char* findKeywords(char *keywords[php_keyword_num], int wordsNum,
+char* findKeywords(char **keywords, int wordsNum,
 		char *fileName) {
 	int i = 0;
 	int exitno = 0;
@@ -489,7 +487,7 @@ int findKeyWord(char *keyword, FILE *fp, int *line, char *source) {
 }
 
 /*find all keywords in the file*/
-char* findViruses(const char *viruses[php_virus_num], int virusesNum,
+char* findViruses(const char **viruses, int virusesNum,
 		char *fileName) {
 	int i = 0, j = 0;
 	char delims[] = ",";
@@ -622,7 +620,7 @@ int falcon_tick() {
 	// initialize and watch the entire directory tree from the current working
 	// directory downwards for all events
 	if (!inotifytools_initialize()
-			|| !inotifytools_watch_recursively_with_exclude(monitorpath, IN_ALL_EVENTS,excpaths)) {
+			|| !inotifytools_watch_recursively_with_exclude(monitorpath, IN_CREATE|IN_MODIFY,excpaths)) {
 		fprintf(stderr, "%s\n", strerror(inotifytools_error()));
 		return -1;
 	}
@@ -631,7 +629,6 @@ int falcon_tick() {
 	inotifytools_set_printf_timefmt("%F %T");
 
 	struct inotify_event * event = inotifytools_next_event(-1);
-
 	while (event) {
 
 		if (((strstr(event->name, ".php") != NULL
@@ -640,8 +637,16 @@ int falcon_tick() {
 				&& strstr(event->name, "~") == NULL) || (event->mask & IN_ISDIR))) {
 			if (virusHandler(event, phpVirusfeature, php_virus_num) != 1) {
 				eventHandler(event, phpKeywords, php_keyword_num);
+				
 			}
 		}
+		inotifytools_cleanup();
+		if (!inotifytools_initialize()
+				|| !inotifytools_watch_recursively_with_exclude(monitorpath,IN_CREATE|IN_MODIFY,excpaths)) {
+			fprintf(stderr, "%s\n", strerror(inotifytools_error()));
+			return -1;
+		}
+		inotifytools_set_printf_timefmt("%F %T");
 		event = inotifytools_next_event(-1);
 	}
 
@@ -694,10 +699,10 @@ int falcon_signal_init() {
 
 void falcon_signal_handler(int signal) {
 	if (SIGINT == signal //ctrl + c, kill -2
-	|| SIGUSR1 == signal // quit, kill -10
-	|| SIGKILL == signal // kill -9
-	|| SIGQUIT == signal) // kill -3
-			{
+			|| SIGUSR1 == signal // quit, kill -10
+			|| SIGKILL == signal // kill -9
+			|| SIGQUIT == signal) // kill -3
+	{
 		fprintf(stderr, "catch signal SIGINT, server shutdown\n");
 		gSvrdCtx->is_stop = 1;
 	}
@@ -705,9 +710,9 @@ void falcon_signal_handler(int signal) {
 
 int falcon_help() {
 	const char* szHelpInfo = "falcon start-up parameters: \n"
-			"	--help \n"
-			"	--version \n"
-			"	[start | stop] \n";
+		"	--help \n"
+		"	--version \n"
+		"	[start | stop] \n";
 	fprintf(stderr, szHelpInfo);
 	return 0;
 }
