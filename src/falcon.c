@@ -22,6 +22,9 @@ char *phpKeywords[1024];
 char *phpVirusname[1024];
 const char *phpVirusfeature[1024];
 
+char *emails;
+char cmdbuf[1024] = {0};
+
 extern char ga_variables[MAX_VAR_NUM][MAX_VAR_NAME_LEN + 1];
 extern char ga_values[MAX_VAR_NUM][MAX_VAR_VALUE_LEN + 1];
 
@@ -50,14 +53,14 @@ int main(int argc, char *argv[]) {
 	//time函数读取现在的时间(国际标准时间非北京时间)，然后传值给now
 	timenow = localtime(&now);
 	//localtime函数把从time取得的时间now换算成你电脑中的时间(就是你设置的地区)
-//	printf("Start   time: %s\n", asctime(timenow));
+	//	printf("Start   time: %s\n", asctime(timenow));
 	fprintf(stderr, "Start   time: %s\n", asctime(timenow));
 	//上句中asctime函数把时间转换成字符，通过printf()函数输出
 
 	parse_config_file("../src/conf/global.conf");
 	monitorpath = (char *) malloc(sizeof(char) * 1024);
 	strcpy(monitorpath, get_config_var("monitorpath"));
-//	printf("monitor path:%s\n", monitorpath);
+	//	printf("monitor path:%s\n", monitorpath);
 	fprintf(stderr, "monitor path:%s\n", monitorpath);
 
 	parse_config_file("../src/conf/global.conf");
@@ -65,14 +68,14 @@ int main(int argc, char *argv[]) {
 	vdirnew = (char *) malloc(sizeof(char) * 1024);
 	vdirtmp = (char *) malloc(sizeof(char) * 1024);
 	strcpy(vdirtmp, get_config_var("monitorpath"));
-//	strReplace(vdir, "/", "/virus", 1024);
+	//	strReplace(vdir, "/", "/virus", 1024);
 	vdirnew = strtok(vdirtmp, delims);
-//	vdir = strtok(NULL, delims);
+	//	vdir = strtok(NULL, delims);
 	strcat(vdirnew, "/virus/");
 	strcat(vdir, "/");
 	strcat(vdir, vdirnew);
-//	printf("virus back path:%s\n", vdir);
-	
+	//	printf("virus back path:%s\n", vdir);
+
 	fprintf(stderr, "virus bak path:%s\n", vdir);
 
 	if (falcon_init() < 0) {
@@ -83,28 +86,28 @@ int main(int argc, char *argv[]) {
 	snprintf(gSvrdCtx->id, 16, "%s", "secrule");
 	snprintf(gSvrdCtx->pid_file, 256, "/var/tmp/falcon_%s.pid", "secrule");
 	// load main parameters
-//	static struct option szLongOptions[] =
-//			{ { "daemon", 0, NULL, 'D' }, { "help", 0, NULL, 'H' }, { "version",
-//					0, NULL, 'V' }, { 0, 0, 0, 0 } };
+	//	static struct option szLongOptions[] =
+	//			{ { "daemon", 0, NULL, 'D' }, { "help", 0, NULL, 'H' }, { "version",
+	//					0, NULL, 'V' }, { 0, 0, 0, 0 } };
 	static struct option szLongOptions[] = { { "help", 0, NULL, 'H' }, {
-			"version", 0, NULL, 'V' }, { 0, 0, 0, 0 } };
+		"version", 0, NULL, 'V' }, { 0, 0, 0, 0 } };
 
 	int ch;
 	while ((ch = getopt_long(argc, argv, "h:v", szLongOptions, NULL)) != EOF) {
 		switch (ch) {
-		case 'D':
-//			gSvrdCtx->is_daemon = 1;
-			break;
+			case 'D':
+				//			gSvrdCtx->is_daemon = 1;
+				break;
 
-		case 'H':
-			falcon_help();
-			free(gSvrdCtx);
-			exit(0);
+			case 'H':
+				falcon_help();
+				free(gSvrdCtx);
+				exit(0);
 
-		case 'V':
-			fprintf(stderr, "falcon compile at %s %s\n", __DATE__, __TIME__);
-			free(gSvrdCtx);
-			exit(0);
+			case 'V':
+				fprintf(stderr, "falcon compile at %s %s\n", __DATE__, __TIME__);
+				free(gSvrdCtx);
+				exit(0);
 		}
 	}
 
@@ -206,7 +209,7 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 				tmpkeywords = findKeywords(keywords, keywordsNum, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
-//						inotifytools_printf(event, "%T %w%f %e\t");
+						//						inotifytools_printf(event, "%T %w%f %e\t");
 						inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
 						strcat(content, " contains keyword(s):\r\n");
 						strcat(content, tmpkeywords);
@@ -223,6 +226,8 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 					strcat(Keywordsfile, tmpkeywords);
 
 					printf("Keywordsfile : %s\n", Keywordsfile);
+					sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
+					system(cmdbuf);
 					insert_item(connection, "f_monitor", "发现新增可疑文件",
 							Keywordsfile, "3", 0);
 					conn_close(connection);
@@ -239,7 +244,7 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 				tmpkeywords = findKeywords(keywords, keywordsNum, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
-//						inotifytools_printf(event, "%T %w%f %e\t modify ");
+						//						inotifytools_printf(event, "%T %w%f %e\t modify ");
 						inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
 						strcat(content, " contains keyword(s): ");
 						strcat(content, tmpkeywords);
@@ -255,6 +260,8 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 					strcat(Keywordsfile, "\r\n");
 					strcat(Keywordsfile, tmpkeywords);
 
+					sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
+					system(cmdbuf);
 					insert_item(connection, "f_monitor", "发现文件被修改",
 							Keywordsfile, "3", 0);
 					conn_close(connection);
@@ -270,6 +277,8 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 		} else {
 			connection = conn_init();
 			inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
+			sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",fullPathTemp,emails);
+			system(cmdbuf);
 			insert_item(connection, "f_monitor", "发现文件被删除", fullPathTemp, "1",
 					0);
 			conn_close(connection);
@@ -288,8 +297,8 @@ int virusHandler(struct inotify_event *event,
 	char vfilename[1024];
 	char *vdir;
 	char *vdirtmp;
-        char *vdirnew;
-        char delims[] = "/";		
+	char *vdirnew;
+	char delims[] = "/";		
 	char *newpath;
 	int len;
 
@@ -299,15 +308,15 @@ int virusHandler(struct inotify_event *event,
 	inotifytools_snprintf(vfilename, 1024, event, "%f");
 
 	parse_config_file("../src/conf/global.conf");
-        vdir = (char *) malloc(sizeof(char) * 1024);
-        vdirnew = (char *) malloc(sizeof(char) * 1024);
-        vdirtmp = (char *) malloc(sizeof(char) * 1024);
-        strcpy(vdirtmp, get_config_var("monitorpath"));
-        vdirnew = strtok(vdirtmp, delims);
-        strcat(vdirnew, "/virus/");
-        strcpy(vdir, "/");
-        strcat(vdir, vdirnew);
-	
+	vdir = (char *) malloc(sizeof(char) * 1024);
+	vdirnew = (char *) malloc(sizeof(char) * 1024);
+	vdirtmp = (char *) malloc(sizeof(char) * 1024);
+	strcpy(vdirtmp, get_config_var("monitorpath"));
+	vdirnew = strtok(vdirtmp, delims);
+	strcat(vdirnew, "/virus/");
+	strcpy(vdir, "/");
+	strcat(vdir, vdirnew);
+
 	if (access(vdir, 0) != 0) {
 		mkdir(vdir, S_IRWXU || S_IRWXG || S_IRWXO); 
 	}
@@ -317,24 +326,24 @@ int virusHandler(struct inotify_event *event,
 	if (access(fullPathTemp, F_OK) == 0) {
 		if (event->mask & IN_CREATE) {
 			if (event->mask & IN_ISDIR) {
-//				inotifytools_watch_recursively(fullPathTemp, IN_ALL_EVENTS);
+				//				inotifytools_watch_recursively(fullPathTemp, IN_ALL_EVENTS);
 			} else {
 				tmpkeywords = findViruses(phpVirusfeature, php_virus_num, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
-//						inotifytools_printf(event, "%T %w%f %e\t ");
+						//						inotifytools_printf(event, "%T %w%f %e\t ");
 						inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
 						strcat(content, " contains virus(es): ");
 						strcat(content, tmpkeywords);
-//						printf("%s length=%d\n", content, len);
+						//						printf("%s length=%d\n", content, len);
 
 						newpath = (char *) malloc(sizeof(char) * 1024);
 						strncpy(newpath, vdir, 1024);
-//						strcat(newpath, "/");
+						//						strcat(newpath, "/");
 						strcat(newpath, vfilename);
 						newpath = strReplace(newpath, "php", "virus", 1024);
 
-//						printf("newpath : %s\n", newpath);
+						//						printf("newpath : %s\n", newpath);
 
 						if (rename(fullPathTemp, newpath) != 0) {
 							printf("virus file : %s\n", fullPathTemp);
@@ -351,10 +360,12 @@ int virusHandler(struct inotify_event *event,
 						strcat(virusfile, "\r\n");
 						strcat(virusfile, tmpkeywords);
 
+						sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",event->name,emails);
+						system(cmdbuf);
 						insert_item(connection, "f_monitor", "发现后门文件",
 								virusfile, "3", 1);
 						conn_close(connection);
-//						printf("IN_CREATE Done\n");
+						//						printf("IN_CREATE Done\n");
 						return 1;
 					}
 				}
@@ -370,7 +381,7 @@ int virusHandler(struct inotify_event *event,
 				tmpkeywords = findViruses(phpVirusfeature, php_virus_num, fullPathTemp);
 				if (tmpkeywords != NULL) {
 					if ((len = strlen(tmpkeywords)) != 0) {
-//						inotifytools_printf(event, "%T %w%f %e\t modify ");
+						//						inotifytools_printf(event, "%T %w%f %e\t modify ");
 						inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
 						strcat(content, " contains virus(es): ");
 						strcat(content, tmpkeywords);
@@ -578,6 +589,8 @@ int falcon_tick() {
 	char *monitorfiletype;
 	char *expath;
 	char * excpaths[128]={0};
+	char * email[128]={0};
+
 	// TODO:
 
 	parse_config_file("../src/conf/global.conf");
@@ -587,16 +600,20 @@ int falcon_tick() {
 	strcpy(monitorfiletype, get_config_var("monitorfiletype"));
 	expath = (char *) malloc(sizeof(char) * 1024);
 	strcpy(expath, get_config_var("excludepath"));
+
+	emails = (char *) malloc(sizeof(char) * 1024);
+	strcpy(emails, get_config_var("email"));
+
 	//printf("%s\n",expath);
 	char *p = strtok(expath,";");
 	i=0;
 	while(p)
 	{	
-	excpaths[i]=(char *) malloc(sizeof(char) * 1024);
-	strncpy(excpaths[i],p,strlen(p));
-	// printf("%s\n",excpaths[i]);
-	p = strtok(NULL,";"); 
-	i++;
+		excpaths[i]=(char *) malloc(sizeof(char) * 1024);
+		strncpy(excpaths[i],p,strlen(p));
+		// printf("%s\n",excpaths[i]);
+		p = strtok(NULL,";"); 
+		i++;
 	}
 	//keyword
 	php_keyword_num = parse_config_file("../src/conf/phpkeywords.conf");
@@ -632,14 +649,15 @@ int falcon_tick() {
 	while (event) {
 
 		if (((strstr(event->name, ".php") != NULL
-				&& strstr(event->name, ".swp") == NULL
-				&& strstr(event->name, ".swx") == NULL
-				&& strstr(event->name, "~") == NULL) || (event->mask & IN_ISDIR))) {
+						&& strstr(event->name, ".swp") == NULL
+						&& strstr(event->name, ".swx") == NULL
+						&& strstr(event->name, "~") == NULL) || (event->mask & IN_ISDIR))) {
 			if (virusHandler(event, phpVirusfeature, php_virus_num) != 1) {
 				eventHandler(event, phpKeywords, php_keyword_num);
-				
+
 			}
 		}
+		//send email to admin
 		inotifytools_cleanup();
 		if (!inotifytools_initialize()
 				|| !inotifytools_watch_recursively_with_exclude(monitorpath,IN_CREATE|IN_MODIFY,excpaths)) {
