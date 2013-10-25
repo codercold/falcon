@@ -16,6 +16,8 @@
 
 FALCONCtx* gSvrdCtx = NULL;
 
+MYSQL *connection;
+
 int php_keyword_num;
 int php_virus_num;
 char *phpKeywords[1024];
@@ -194,8 +196,8 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 	int len;
 	char *Keywordsfile;
 
-	MYSQL *connection;
-
+	
+	connection = conn_init();
 	inotifytools_snprintf(fullPathTemp, 1024, event, "%w%f");
 	memset(content, 0, 65535);
 
@@ -216,7 +218,6 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 						printf("%s length=%d\n", content, len);
 					}
 
-					connection = conn_init();
 
 					Keywordsfile = (char *) malloc(sizeof(char) * 65535);
 					memset(Keywordsfile, 0, 65535);
@@ -226,11 +227,10 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 					strcat(Keywordsfile, tmpkeywords);
 
 					printf("Keywordsfile : %s\n", Keywordsfile);
-					sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
+					sprintf(cmdbuf,"/usr/bin/curl -s -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
 					system(cmdbuf);
 					insert_item(connection, "f_monitor", "发现新增可疑文件",
 							Keywordsfile, "3", 0);
-					conn_close(connection);
 				}
 			}
 
@@ -251,7 +251,6 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 						printf("%s length=%d\n", content, len);
 					}
 
-					connection = conn_init();
 
 					Keywordsfile = (char *) malloc(sizeof(char) * 65535);
 					memset(Keywordsfile, 0, 65535);
@@ -260,11 +259,10 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 					strcat(Keywordsfile, "\r\n");
 					strcat(Keywordsfile, tmpkeywords);
 
-					sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
+					sprintf(cmdbuf,"/usr/bin/curl -s -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",Keywordsfile,emails);
 					system(cmdbuf);
 					insert_item(connection, "f_monitor", "发现文件被修改",
 							Keywordsfile, "3", 0);
-					conn_close(connection);
 				}
 			}
 			return;
@@ -275,17 +273,14 @@ void eventHandler(struct inotify_event *event, char *keywords[php_keyword_num],
 		if (event->mask & IN_ISDIR) {
 
 		} else {
-			connection = conn_init();
 			inotifytools_fprintf(stderr, event, "%T %w%f %e\n");
-			sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",fullPathTemp,emails);
+			sprintf(cmdbuf,"/usr/bin/curl -s -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",fullPathTemp,emails);
 			system(cmdbuf);
 			insert_item(connection, "f_monitor", "发现文件被删除", fullPathTemp, "1",
 					0);
-			conn_close(connection);
 		}
 		return;
 	}
-
 }
 
 int virusHandler(struct inotify_event *event,
@@ -301,8 +296,8 @@ int virusHandler(struct inotify_event *event,
 	char delims[] = "/";		
 	char *newpath;
 	int len;
-
-	MYSQL *connection;
+	
+	connection = conn_init();
 
 	inotifytools_snprintf(fullPathTemp, 1024, event, "%w%f");
 	inotifytools_snprintf(vfilename, 1024, event, "%f");
@@ -351,7 +346,6 @@ int virusHandler(struct inotify_event *event,
 							perror("move virus file");
 						}
 
-						connection = conn_init();
 
 						virusfile = (char *) malloc(sizeof(char) * 65535);
 						memset(virusfile, 0, 65535);
@@ -360,11 +354,10 @@ int virusHandler(struct inotify_event *event,
 						strcat(virusfile, "\r\n");
 						strcat(virusfile, tmpkeywords);
 
-						sprintf(cmdbuf,"/usr/bin/curl -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",event->name,emails);
+						sprintf(cmdbuf,"/usr/bin/curl -s -X POST -d 'priority=P1&module=falcon&msg=%s&email=%s' \"http://xbox.n.xiaomi.com/monitor/alert\"",event->name,emails);
 						system(cmdbuf);
 						insert_item(connection, "f_monitor", "发现后门文件",
 								virusfile, "3", 1);
-						conn_close(connection);
 						//						printf("IN_CREATE Done\n");
 						return 1;
 					}
@@ -399,7 +392,6 @@ int virusHandler(struct inotify_event *event,
 							printf("quarantine file : %s\n", newpath);
 							perror("move virus file");
 						}
-						connection = conn_init();
 
 						virusfile = (char *) malloc(sizeof(char) * 65535);
 						memset(virusfile, 0, 65535);
@@ -411,7 +403,6 @@ int virusHandler(struct inotify_event *event,
 
 						insert_item(connection, "f_monitor", "发现后门文件",
 								virusfile, "3", 1);
-						conn_close(connection);
 
 						return 1;
 					}
@@ -652,8 +643,13 @@ int falcon_tick() {
 						&& strstr(event->name, ".swp") == NULL
 						&& strstr(event->name, ".swx") == NULL
 						&& strstr(event->name, "~") == NULL) || (event->mask & IN_ISDIR))) {
-			if (virusHandler(event, phpVirusfeature, php_virus_num) != 1) {
+			int result=0;
+			result=virusHandler(event, phpVirusfeature, php_virus_num);
+			mysql_close(connection);
+
+			if (result != 1 ) {
 				eventHandler(event, phpKeywords, php_keyword_num);
+				mysql_close(connection);
 
 			}
 		}

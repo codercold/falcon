@@ -7,6 +7,8 @@
 
 #include "db_mgr.h"
 
+static MYSQL_RES *rs;
+
 union ipu {
 	long ip;
 	unsigned char ipchar[4];
@@ -97,13 +99,13 @@ int insert_item(MYSQL *connection, char *tablename, char *content, char *source,
 	sql = (char *) malloc(sizeof(char) * 1024);
 	chunk = (char *) malloc(sizeof(char) * 1024);
 	ip = (char *) malloc(sizeof(char) * 1024);
-//	buf = (char *) malloc(sizeof(char) * (65535));
+	//	buf = (char *) malloc(sizeof(char) * (65535));
 
 	iptest.ip = getlocalhostip();
 	sprintf(ip, "%3u.%3u.%3u.%3u", iptest.ipchar[0], iptest.ipchar[1],
 			iptest.ipchar[2], iptest.ipchar[3]);
 
-//	mysql_real_escape_string(connection, chunk, source, strlen(source) * 2 + 1);
+	//	mysql_real_escape_string(connection, chunk, source, strlen(source) * 2 + 1);
 	mysql_real_escape_string(connection, chunk, source, strlen(source));
 
 	sprintf(sql,
@@ -116,6 +118,12 @@ int insert_item(MYSQL *connection, char *tablename, char *content, char *source,
 		fprintf(stderr, "Retrive error: %s\n", mysql_error(connection));
 	}
 
+	do
+	{
+		rs = mysql_store_result( connection );
+		mysql_free_result(rs);
+	}while( !mysql_next_result( connection ) );
+	
 	free(ip);
 	free(chunk);
 	free(sql);
